@@ -4,14 +4,18 @@ import numpy as np
 import random
 
 class Entity:
-    def __init__(self, x, y, energy = 20, color = GREEN, brain_weights = None, parent_weights = None):
+    def __init__(self, x, y, energy = 20, color = GREEN, rotation = None, brain_weights = None, parent_weights = None):
         self.energy = energy
-        self.rotation = random.randint(0, 3)  # 0 вверх, 1 вправо, 2 вниз, 3 влево
         self.x = x
         self.y = y
         self.color = color  # Цвет сущности кортеж
         self.age = 0
         
+        if rotation is not None: # 0 вверх, 1 вправо, 2 вниз, 3 влево
+            self.rotation = rotation
+        else:
+            self.rotation = random.randint(0, 3)
+
         if brain_weights is not None:
             self.brain_weights = brain_weights
         elif parent_weights is not None:
@@ -22,11 +26,14 @@ class Entity:
         else:
             self.brain_weights = [                  # Архитектура: 5 входов → 8 нейронов → 6 нейронов → 5 выходов
                 np.random.uniform(-1, 1, (5, 8)),   # Входной слой (5 нейронов) → Скрытый слой 1 (8 нейронов)
-                np.random.uniform(-1, 1, (8, 6)),   # Скрытый слой 1 → Скрытый слой 2
+                np.random.uniform(-1, 1, (8, 6)),   # Скрытый слой 1 → Скрытый слой 2 (6 нейронов)
                 np.random.uniform(-1, 1, (6, 5))    # Скрытый слой 2 → Выходной слой (5 действий)
             ]
     
-    def brain(self, gen, object_input, map_size) -> int:
+    def __str__(self):
+        return f'Energy: {self.energy}, Rotation: {self.rotation}, XY: {self.x} {self.y}, Color: {self.color}, Age: {self.age}, Brain: {self.brain_weights}'
+
+    def brain(self, gen, object_input, map_size) -> int: # Одна итерация ИИ
         self.age += 1
         if map_size[0] > 1:
             normalized_x = self.x / (map_size[0] - 1)
@@ -50,12 +57,12 @@ class Entity:
         layer2 = np.maximum(0, np.dot(layer1, self.brain_weights[1])) # Второй скрытый слой
         output = 1 / (1 + np.exp(-np.dot(layer2, self.brain_weights[2]))) # Сигмоида
         action = np.argmax(output) # Вероятность нейронов
-        
+
         return action
     
 
     def can_reproduce(self):
-        return self.energy >= 30 and self.age > 10
+        return self.energy >= 15 and self.age > 5
     
 
     def reproduce(self, x, y):
