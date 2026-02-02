@@ -23,19 +23,11 @@ def DrawEntity(screen, color, color_border, cell_x, cell_y, cell_size, direction
                         (lx - spacing // 2, pixel_y + border_width), 
                         (lx - spacing // 2, pixel_y + border_width + eye_length), 
                         thickness)
-        pygame.draw.line(screen, color_border, 
-                        (lx + spacing // 2, pixel_y + border_width), 
-                        (lx + spacing // 2, pixel_y + border_width + eye_length), 
-                        thickness)
         
         rx = cx + eye_offset
         pygame.draw.line(screen, color_border, 
                         (rx - spacing // 2, pixel_y + border_width), 
                         (rx - spacing // 2, pixel_y + border_width + eye_length), 
-                        thickness)
-        pygame.draw.line(screen, color_border, 
-                        (rx + spacing // 2, pixel_y + border_width), 
-                        (rx + spacing // 2, pixel_y + border_width + eye_length), 
                         thickness)
     
     elif direction == 1: # down
@@ -44,19 +36,11 @@ def DrawEntity(screen, color, color_border, cell_x, cell_y, cell_size, direction
                         (pixel_x + cell_size - border_width, ty - spacing // 2), 
                         (pixel_x + cell_size - border_width - eye_length, ty - spacing // 2), 
                         thickness)
-        pygame.draw.line(screen, color_border, 
-                        (pixel_x + cell_size - border_width, ty + spacing // 2), 
-                        (pixel_x + cell_size - border_width - eye_length, ty + spacing // 2), 
-                        thickness)
         
         by = cy + eye_offset
         pygame.draw.line(screen, color_border, 
                         (pixel_x + cell_size - border_width, by - spacing // 2), 
                         (pixel_x + cell_size - border_width - eye_length, by - spacing // 2), 
-                        thickness)
-        pygame.draw.line(screen, color_border, 
-                        (pixel_x + cell_size - border_width, by + spacing // 2), 
-                        (pixel_x + cell_size - border_width - eye_length, by + spacing // 2), 
                         thickness)
 
     elif direction == 2: # right
@@ -65,20 +49,12 @@ def DrawEntity(screen, color, color_border, cell_x, cell_y, cell_size, direction
                         (lx - spacing // 2, pixel_y + cell_size - border_width), 
                         (lx - spacing // 2, pixel_y + cell_size - border_width - eye_length), 
                         thickness)
-        pygame.draw.line(screen, color_border, 
-                        (lx + spacing // 2, pixel_y + cell_size - border_width), 
-                        (lx + spacing // 2, pixel_y + cell_size - border_width - eye_length), 
-                        thickness)
         
         rx = cx + eye_offset
         pygame.draw.line(screen, color_border, 
                         (rx - spacing // 2, pixel_y + cell_size - border_width), 
                         (rx - spacing // 2, pixel_y + cell_size - border_width - eye_length), 
                         thickness)
-        pygame.draw.line(screen, color_border, 
-                        (rx + spacing // 2, pixel_y + cell_size - border_width), 
-                        (rx + spacing // 2, pixel_y + cell_size - border_width - eye_length), 
-                        thickness) 
 
     elif direction == 3: # left
         ty = cy - eye_offset
@@ -86,18 +62,10 @@ def DrawEntity(screen, color, color_border, cell_x, cell_y, cell_size, direction
                         (pixel_x + border_width, ty - spacing // 2), 
                         (pixel_x + border_width + eye_length, ty - spacing // 2), 
                         thickness)
-        pygame.draw.line(screen, color_border, 
-                        (pixel_x + border_width, ty + spacing // 2), 
-                        (pixel_x + border_width + eye_length, ty + spacing // 2), 
-                        thickness)
         
         by = cy + eye_offset
         pygame.draw.line(screen, color_border, 
                         (pixel_x + border_width, by - spacing // 2), 
                         (pixel_x + border_width + eye_length, by - spacing // 2), 
-                        thickness)
-        pygame.draw.line(screen, color_border, 
-                        (pixel_x + border_width, by + spacing // 2), 
-                        (pixel_x + border_width + eye_length, by + spacing // 2), 
                         thickness)
         
