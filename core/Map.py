@@ -1,10 +1,18 @@
 from core.Settings import *
 
 class Map:
-    def __init__(self, x = 100, y = 100, map = []):
+    def __init__(self, x = 100, y = 100, map = None, map_height = None, map_humidity = None):
         self.size = [x, y]
         self.size_window = [x * SIZE, y * SIZE]
-        self.map = [[None for i in range(x)] for i in range(y)]
+
+        if map == None:
+            self.map = [[None for i in range(x)] for i in range(y)]
+
+        if map_height == None:
+            self.map_height = []
+        
+        if map_humidity == None:
+            self.map_humidity = []
 
     def get_map(self):
         return self.map
@@ -33,6 +41,9 @@ class Map:
         y_itog = y % self.size[1]
         return self.map[y_itog][x_itog]
 
+
+def Generation():
+    pass
 
 if __name__ == '__main__':
     a = Map(100, 100)

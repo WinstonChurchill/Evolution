@@ -68,4 +68,4 @@ def DrawEntity(screen, color, color_border, cell_x, cell_y, cell_size, direction
                         (pixel_x + border_width, by - spacing // 2), 
                         (pixel_x + border_width + eye_length, by - spacing // 2), 
                         thickness)
-        
+
