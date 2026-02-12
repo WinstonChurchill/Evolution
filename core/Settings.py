@@ -3,7 +3,7 @@ GREEN = (153, 229, 80)
 BORDER  = (0, 0, 0)
 WIDTH, HEIGHT = 1904, 1000
 SIZE = 8
-VERSION = '0.3v'
+VERSION = '0.4v'
 FPS = 30
 
 MAX_ENERGY = 15 # максимальное количество энергии

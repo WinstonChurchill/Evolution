@@ -12,7 +12,7 @@ def save(matrix): # Сохраняем
         pickle.dump(matrix, f)
 
 
-def load(matrix): # Загружаем
+def load(): # Загружаем
     with open('save/save.save', 'rb') as f:
         loaded_matrix = pickle.load(f)
     return loaded_matrix
@@ -30,10 +30,11 @@ def new_map(): # Создает новое чистое поле и расста
 
 pygame.init()
 pygame.font.init()
+pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 
 icon = pygame.image.load('gfx/1.ico')
 pygame.display.set_icon(icon)
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.DOUBLEBUF)
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.DOUBLEBUF | pygame.HWSURFACE)
 clock = pygame.time.Clock()
 front = pygame.font.Font('gfx/ProggyClean.ttf', 30)
 map = new_map()
@@ -71,7 +72,7 @@ while running:
                 save(map)
                 print('Мир сохранен')
             elif event.key == pygame.K_l: # Загрузка мира
-                map = load(map)
+                map = load()
                 print('Мир загружен')
             elif event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS: # Увеличение просчета за одну итерацию
                 NUMBER_OF_ITERATIONS_PER_DRAWING += 1
@@ -104,9 +105,6 @@ while running:
     if rendering: # Отрисовка
         screen.fill(WHITE)
 
-    if not(paused): # Просчет мозгов
-        iteration += 1
-
     entities_to_process1 = [] # Потоки
     # entities_to_process2 = []
     # entities_to_process3 = []
@@ -131,10 +129,11 @@ while running:
                     if rendering and pygame.display.get_active() and i == 0: # Отрисовка
                         DrawEntity(screen, cell.color, BORDER, cell.x, cell.y, SIZE, cell.rotation)
 
-        if not paused:
+        if not paused: # Просчет мозгов
+            iteration += 1
+            
             Entity_processing_function(map, entities_to_process1, old_age)
 
-        if not paused:
             entity_count = sum(1 for y in range(map.size[1]) for x in range(map.size[0]) if isinstance(map.get_cor_map(x, y), Entity))
             print('Количество сущностей:', entity_count, 'Итераций: ', iteration)
 
