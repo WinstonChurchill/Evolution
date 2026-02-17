@@ -1,201 +1,203 @@
-from core.Settings import *
-
 import numpy as np
 import random
 
+from core.Settings import config, colors
+
 class Entity:
-    def __init__(self, x, y, energy = 20, color = GREEN, rotation = None, brain_weights = None, parent_weights = None):
-        self.energy = energy
+    def __init__(self, x, y, energy = None, color = None, rotation = None, brain_weights = None, parent_weights = None):
+        """
+        Создание сущности (бота)
+        :param x, y: координаты на карте
+        :param energy: энергия сущности
+        :param color: цвет (RGB)
+        :param rotation: направление (0 вверх, 1 вправо, 2 вниз, 3 влево)
+        :param brain_weights: веса нейросети
+        :param parent_weights: веса родителя (для наследования)
+        """
+        self.energy = energy or config.MAX_ENERGY
         self.x = x
         self.y = y
         self.age = 0
-        self.color = color
+        self.color = color or colors.GREEN
+        self.type = 0  # тип сущности (0 - обычный бот)
 
-        if rotation is not None: # 0 вверх, 1 вправо, 2 вниз, 3 влево
+        # Направление (0 вверх, 1 вправо, 2 вниз, 3 влево)
+        if rotation is not None:
             self.rotation = rotation
         else:
             self.rotation = random.randint(0, 3)
 
+        # Инициализация весов мозга
         if brain_weights is not None:
             self.brain_weights = brain_weights
         elif parent_weights is not None:
-            if random.random() < CHANCE_OF_MUTATION:
+            # Мутация при наследовании
+            if random.random() < config.CHANCE_OF_MUTATION:
                 self.brain_weights = []
                 for weight in parent_weights:
-                    mutation = np.random.normal(0, MUTATION_COEFFICIENT, weight.shape)  # Изменяем каждый вес
+                    mutation = np.random.normal(0, config.MUTATION_COEFFICIENT, weight.shape)  # Изменяем каждый вес
                     self.brain_weights.append(weight + mutation)
             else:
                 self.brain_weights = parent_weights
         else:
+            # Случайная инициализация (Xavier initialization)
             self.brain_weights = [
-            np.random.randn(6, 16) * np.sqrt(2.0 / 6),
-            np.random.randn(16, 8) * np.sqrt(2.0 / 16),
-            np.random.randn(8, 6) * np.sqrt(2.0 / 8),
-            np.random.randn(6, 5) * np.sqrt(2.0 / 6)
-        ]
-
-
-    def get_color(self):
-        all_weights = np.concatenate([w.flatten() for w in self.brain_weights])
-        weights_count = len(all_weights)
-        
-        np.random.seed(42)
-        proj_r = np.random.randn(weights_count)
-        proj_g = np.random.randn(weights_count)
-        proj_b = np.random.randn(weights_count)
-        
-        weighted_r = np.dot(all_weights, proj_r)
-        weighted_g = np.dot(all_weights, proj_g)
-        weighted_b = np.dot(all_weights, proj_b)
-        
-        magic_r = np.tanh(weighted_r / weights_count)
-        magic_g = np.tanh(weighted_g / weights_count)
-        magic_b = np.tanh(weighted_b / weights_count)
-        
-        r = int(((magic_r + 1) / 2) * 255)
-        g = int(((magic_g + 1) / 2) * 255)
-        b = int(((magic_b + 1) / 2) * 255)
-        
-        r = max(0, min(255, r))
-        g = max(0, min(255, g))
-        b = max(0, min(255, b))
-        
-        return (r, g, b)
+                np.random.randn(7, 16) * np.sqrt(2.0 / 6),
+                np.random.randn(16, 8) * np.sqrt(2.0 / 16),
+                np.random.randn(8, 6) * np.sqrt(2.0 / 8),
+                np.random.randn(6, 5) * np.sqrt(2.0 / 6)
+            ]
 
 
     def __str__(self):
-        return f'Energy: {self.energy}, Rotation: {self.rotation}, XY: {self.x} {self.y}, Color: {self.color}, Age: {self.age}, Brain: {self.brain_weights}'
+        return (f'Energy: {self.energy}, Rotation: {self.rotation}, '
+                f'XY: {self.x} {self.y}, Color: {self.color}, Age: {self.age}')
 
 
-    def brain(self, look_brain, object_input) -> int: # Одна итерация ИИ
-        """Одна итерация бота"""
+    def brain(self, look_brain, object_input):
+        """Одна итерация ИИ - обработка входных данных нейросетью"""
         self.age += 1
 
+        # Нормализованные входные данные
         layer = np.array([
-            self.energy / MAX_ENERGY, # Сколько энергии у сущности
-            self.rotation / 4.0, # Куда сущность смотрит
-            float(f'0.{self.x}{self.y}'),  # Нормализованное значение координат
-            look_brain,  # Нормализовать процентное различие
-            object_input, # Что видит сущность
+            self.energy / config.MAX_ENERGY,  # Сколько энергии у сущности
+            self.rotation / 4.0,  # Куда сущность смотрит
+            1 / (self.x + 0.0001),  # Координаты (избегаем деления на 0)
+            1 / (self.y + 0.0001),
+            look_brain,  # Нормализованное процентное различие цветов
+            object_input,  # Что видит сущность (битовая маска)
             1 / self.age  # Возраст
-        ], dtype = np.float32)
+        ], dtype=np.float32)
 
-        for i in self.brain_weights[:-1]:
-            layer = np.maximum(0, np.dot(layer, i))
+        # Прямое распространение (forward pass) через скрытые слои
+        for weights in self.brain_weights[:-1]:
+            layer = np.maximum(0, np.dot(layer, weights))  # ReLU активация
 
-        output = 1 / (1 + np.exp(-np.dot(layer, self.brain_weights[-1]))) # Сигмоида для активации
-        action = np.argmax(output)
+        # Выходной слой с сигмоидой
+        output = 1 / (1 + np.exp(-np.dot(layer, self.brain_weights[-1])))  # Сигмоида для активации
+        action = np.argmax(output)  # Выбираем действие с наибольшей вероятностью
 
         return action
-    
+
 
     def can_reproduce(self):
-        """Может, ли бот размножиться"""
-        return self.energy >= RESTRICTION_ON_REPRODUCTION_ENERGY and self.age // 2 > RESTRICTION_ON_REPRODUCTION_AGE
-    
+        """Может ли бот размножиться"""
+        return (self.energy >= config.RESTRICTION_ON_REPRODUCTION_ENERGY and 
+                self.age // 2 > config.RESTRICTION_ON_REPRODUCTION_AGE)
+
 
     def reproduce(self, x, y):
-        """Размножение"""
+        """Размножение - создание потомка"""
         child_energy = self.energy // 2
         self.energy = self.energy // 2
-        
+
+        # Мутация цвета
         if isinstance(self.color, tuple) and len(self.color) >= 3:
             r, g, b = self.color[0], self.color[1], self.color[2]
-            r = max(0, min(255, r + random.randint(-MUTATION_COEFFICIENT_COLOR, MUTATION_COEFFICIENT_COLOR)))
-            g = max(0, min(255, g + random.randint(-MUTATION_COEFFICIENT_COLOR, MUTATION_COEFFICIENT_COLOR)))
-            b = max(0, min(255, b + random.randint(-MUTATION_COEFFICIENT_COLOR, MUTATION_COEFFICIENT_COLOR)))
+            r = max(0, min(255, r + random.randint(-config.MUTATION_COEFFICIENT_COLOR, config.MUTATION_COEFFICIENT_COLOR)))
+            g = max(0, min(255, g + random.randint(-config.MUTATION_COEFFICIENT_COLOR, config.MUTATION_COEFFICIENT_COLOR)))
+            b = max(0, min(255, b + random.randint(-config.MUTATION_COEFFICIENT_COLOR, config.MUTATION_COEFFICIENT_COLOR)))
             child_color = (r, g, b)
+        else:
+            child_color = self.color
 
-        child = Entity( # Создаем потомка с другими весами
-            x, y,
-            energy = child_energy,
-            color = child_color,
-            parent_weights = self.brain_weights
-        )
-        
+        # Создаем потомка с мутировавшими весами
+        child = Entity(x, y, energy=child_energy, color=child_color, parent_weights=self.brain_weights)
         return child
-    
 
-def Entity_processing_function(map, entities_to_process, old_age):
-    random.shuffle(entities_to_process)
+
+def calculate_color_difference(color1, color2):
+    """Процентное различие между двумя цветами (для взгляда бота)"""
+    return np.sqrt(np.power(color1[0] - color2[0], 2) + 
+                   np.power(color1[1] - color2[1], 2) + 
+                   np.power(color1[2] - color2[2], 2)) / 441.67  # Максимальное возможное расстояние
+
+
+def Entity_processing_function(world_map, entities_to_process, old_age):
+    """Функция обработки всех сущностей на карте"""
+    random.shuffle(entities_to_process)  # Случайный порядок для честности
+    
     for x, y, cell in entities_to_process:
+        # Определяем позиции для обзора в зависимости от направления
         check_positions = []
         
         if cell.rotation == 0:  # Вверх
             check_positions = [
-                ((x - 1) % map.size[0], (y - 1) % map.size[1]),  # Верх-левый
-                (x % map.size[0], (y - 1) % map.size[1]),        # Верх
-                ((x + 1) % map.size[0], (y - 1) % map.size[1])   # Верх-правый
+                ((x - 1) % world_map.size[0], (y - 1) % world_map.size[1]),  # Верх-левый
+                (x % world_map.size[0], (y - 1) % world_map.size[1]),        # Верх
+                ((x + 1) % world_map.size[0], (y - 1) % world_map.size[1])   # Верх-правый
             ]
-            look_position = (x % map.size[0], (y - 1) % map.size[1])
+            look_position = (x % world_map.size[0], (y - 1) % world_map.size[1])
         elif cell.rotation == 1:  # Вправо
             check_positions = [
-                ((x + 1) % map.size[0], (y - 1) % map.size[1]),  # Правый-верх
-                ((x + 1) % map.size[0], y % map.size[1]),        # Правый
-                ((x + 1) % map.size[0], (y + 1) % map.size[1])   # Правый-низ
+                ((x + 1) % world_map.size[0], (y - 1) % world_map.size[1]),  # Правый-верх
+                ((x + 1) % world_map.size[0], y % world_map.size[1]),        # Правый
+                ((x + 1) % world_map.size[0], (y + 1) % world_map.size[1])   # Правый-низ
             ]
-            look_position = ((x + 1) % map.size[0], y % map.size[1])
+            look_position = ((x + 1) % world_map.size[0], y % world_map.size[1])
         elif cell.rotation == 2:  # Вниз
             check_positions = [
-                ((x - 1) % map.size[0], (y + 1) % map.size[1]),  # Низ-левый
-                (x % map.size[0], (y + 1) % map.size[1]),        # Низ
-                ((x + 1) % map.size[0], (y + 1) % map.size[1])   # Низ-правый
+                ((x - 1) % world_map.size[0], (y + 1) % world_map.size[1]),  # Низ-левый
+                (x % world_map.size[0], (y + 1) % world_map.size[1]),        # Низ
+                ((x + 1) % world_map.size[0], (y + 1) % world_map.size[1])   # Низ-правый
             ]
-            look_position = (x % map.size[0], (y + 1) % map.size[1])
+            look_position = (x % world_map.size[0], (y + 1) % world_map.size[1])
         elif cell.rotation == 3:  # Влево
             check_positions = [
-                ((x - 1) % map.size[0], (y - 1) % map.size[1]),  # Левый-верх
-                ((x - 1) % map.size[0], y % map.size[1]),        # Левый
-                ((x - 1) % map.size[0], (y + 1) % map.size[1])   # Левый-низ
+                ((x - 1) % world_map.size[0], (y - 1) % world_map.size[1]),  # Левый-верх
+                ((x - 1) % world_map.size[0], y % world_map.size[1]),        # Левый
+                ((x - 1) % world_map.size[0], (y + 1) % world_map.size[1])   # Левый-низ
             ]
-            look_position = ((x - 1) % map.size[0], y % map.size[1])
+            look_position = ((x - 1) % world_map.size[0], y % world_map.size[1])
         
+        # Формируем строку видимости (3 бита - есть ли сущность в каждой из трёх клеток)
         visible_cells = ""
-        for cx, cy in check_positions: # Взгляд
-            visible_cells += "1" if map.get_cor_map(cx, cy) != None else "0"
+        for cx, cy in check_positions:
+            visible_cells += "1" if world_map.get_cor_map(cx, cy) is not None else "0"
         
-        object_input = float(f'0.{visible_cells}')
+        object_input = float(f'0.{visible_cells}')  # Преобразуем в число 0.xxx
 
-        if look_position is not None: # Проверяем перед сущностью, сущность
-            front_cell = map.get_cor_map(look_position[0], look_position[1])
+        # Проверяем, что находится прямо перед сущностью
+        if look_position is not None:
+            front_cell = world_map.get_cor_map(look_position[0], look_position[1])
             if front_cell is not None:
-                brain_look = gen(cell.color, front_cell.color) + 0.0001
+                brain_look = calculate_color_difference(cell.color, front_cell.color) + 0.0001
             else:
                 brain_look = 0
         else:
             brain_look = 0
 
-        action = cell.brain(brain_look, object_input) # Итерация ИИ
-        
+        # Получаем действие от нейросети
+        action = cell.brain(brain_look, object_input)
+
+        # Выполняем действие
         if action == 0:  # Движение
             old_x, old_y = cell.x, cell.y
             new_x, new_y = old_x, old_y
             
             if cell.rotation == 0:  # Вверх
-                new_y = (old_y - 1) % map.size[1]
+                new_y = (old_y - 1) % world_map.size[1]
             elif cell.rotation == 1:  # Вправо
-                new_x = (old_x + 1) % map.size[0]
+                new_x = (old_x + 1) % world_map.size[0]
             elif cell.rotation == 2:  # Вниз
-                new_y = (old_y + 1) % map.size[1]
+                new_y = (old_y + 1) % world_map.size[1]
             elif cell.rotation == 3:  # Влево
-                new_x = (old_x - 1) % map.size[0]
+                new_x = (old_x - 1) % world_map.size[0]
             
-            target_cell = map.get_cor_map(new_x, new_y)
-            if target_cell == None:
-                map.move(old_x, old_y, new_x, new_y)
+            target_cell = world_map.get_cor_map(new_x, new_y)
+            if target_cell is None:
+                world_map.move(old_x, old_y, new_x, new_y)
                 cell.energy -= 1
             else:
                 cell.energy -= 1
-        
+
         elif action == 1:  # Фотосинтез
-            brightness = 1
-            # brightness = ((x + y) // 5) % 10  # Циклический паттерн
-            # brightness =  0.75 + np.sin(cell.y + cell.x)
-            # brightness = ((x / max(1, map.size[0]) + y / max(1, map.size[1])) / 2)
-            cell.energy = min(MAX_ENERGY, cell.energy + int(PHOTOSYNTHESIS_COEFFICIENT * brightness))
+            brightness = 1  # Можно добавить более сложную логику освещения
+            cell.energy = min(config.MAX_ENERGY, cell.energy + int(config.PHOTOSYNTHESIS_COEFFICIENT * brightness))
 
         elif action == 2:  # Размножение
             if cell.can_reproduce():
+                # Проверяем все соседние клетки (8 направлений)
                 directions = [
                     (-1, -1), (0, -1), (1, -1),   # Верхний ряд
                     (-1, 0),           (1, 0),    # По бокам (без текущей позиции)
@@ -203,48 +205,45 @@ def Entity_processing_function(map, entities_to_process, old_age):
                 ]
                 
                 for dx, dy in directions:
-                    child_x = (cell.x + dx) % map.size[0]
-                    child_y = (cell.y + dy) % map.size[1]
+                    child_x = (cell.x + dx) % world_map.size[0]
+                    child_y = (cell.y + dy) % world_map.size[1]
                     
-                    if map.get_cor_map(child_x, child_y) == None:
+                    if world_map.get_cor_map(child_x, child_y) is None:
                         child = cell.reproduce(child_x, child_y)
-                        map.map[child_y][child_x] = child
+                        world_map.world_map[child_y][child_x] = child
                         break
             else:
-                cell.energy -= 5
+                cell.energy -= 5  # Штраф за попытку размножения без ресурсов
 
-        elif action == 3:  # поворот
+        elif action == 3:  # Поворот
             cell.rotation = (cell.rotation + 1) % 4
             cell.energy -= 1
-        
-        elif action == 4:  # атака или питание, если растение
+
+        elif action == 4:  # Атака или питание
             target_x, target_y = cell.x, cell.y
             
             if cell.rotation == 0:  # Вверх
-                target_y = (cell.y - 1) % map.size[1]
+                target_y = (cell.y - 1) % world_map.size[1]
             elif cell.rotation == 1:  # Вправо
-                target_x = (cell.x + 1) % map.size[0]
+                target_x = (cell.x + 1) % world_map.size[0]
             elif cell.rotation == 2:  # Вниз
-                target_y = (cell.y + 1) % map.size[1]
+                target_y = (cell.y + 1) % world_map.size[1]
             elif cell.rotation == 3:  # Влево
-                target_x = (cell.x - 1) % map.size[0]
+                target_x = (cell.x - 1) % world_map.size[0]
             
-            target_cell = map.get_cor_map(target_x, target_y)
+            target_cell = world_map.get_cor_map(target_x, target_y)
             if isinstance(target_cell, Entity):
-                cell.energy = min(MAX_ENERGY, cell.energy + int(target_cell.energy * 0.1)) # Правило 10%
-                map.map[target_y][target_x] = None
+                cell.energy = min(config.MAX_ENERGY, cell.energy + int(target_cell.energy * 0.1))  # Правило 10%
+                world_map.world_map[target_y][target_x] = None  # Съедаем цель
             else:
-                cell.energy -= 2
+                cell.energy -= 2  # Штраф за пустую атаку
 
-
-        if cell.energy <= 0: # Смерть от истощения
-            map.map[y][x] = None
+        # Проверка на смерть от истощения
+        if cell.energy <= 0:
+            world_map.world_map[y][x] = None
             continue
 
-        if random.randint(0, 100) < cell.age // 10 and old_age: # Смерть от старости
-            map.map[y][x] = None
+        # Проверка на смерть от старости (если включено)
+        if random.randint(0, 100) < cell.age // 10 and old_age:
+            world_map.world_map[y][x] = None
             continue
-
-
-def gen(color1, color2): # процентное различие сущностей
-        return np.sqrt(np.power(color1[0] - color2[0], 2) + np.power(color1[1] - color2[1], 2) + np.power(color1[2] - color2[2], 2)) / 441.67
