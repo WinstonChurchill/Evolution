@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Evolution"
+version = "0.1.0"
+description = "Тут будет описание проекта"
+requires-python = ">=3.12"
+
+dependencies = [
+    "numpy==2.4.1",
+    "pygame==2.5.2",
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = ">=2.4.1"
+pygame = ">=2.5.2"
+
+[project.urls]
+Homepage = "https://github.com/WinstonChurchill/EvolutionOld"
+
+[tool.setuptools.packages.find]
+exclude = ["gfx*", "save*", "installation*"]
